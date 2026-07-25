@@ -631,6 +631,11 @@ function startGame() {
   state.velX = 0;
   state.velY = 0;
 
+  if (state.balloonGroup) {
+    state.balloonGroup.position.set(0, 0.5, 0);
+    state.balloonGroup.rotation.set(0, 0, 0);
+  }
+
   state.airPumps.forEach(resetPumpPos);
   state.spikes.forEach(resetSpikePos);
   state.trees.forEach(t => resetGroundItemPos(t, true));
@@ -784,6 +789,8 @@ function animate() {
     if (state.balloonGroup) {
       state.balloonGroup.position.x = state.posX;
       state.balloonGroup.position.y = state.posY;
+      state.balloonGroup.rotation.x = Math.max(-0.12, Math.min(0.12, state.velY * 0.4)); // Subtle pitch up/down
+      state.balloonGroup.rotation.y = 0; // Lock forward facing direction towards camera
       state.balloonGroup.rotation.z = Math.max(-0.25, Math.min(0.25, -state.velX * 0.35)); // Gentle banking tilt
     }
 
