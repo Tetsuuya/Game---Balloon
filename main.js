@@ -164,7 +164,7 @@ loader.load(
       }
     });
 
-    fbx.rotation.set(-Math.PI / 2, 0, 0);
+    fbx.rotation.set(-Math.PI / 2, 0, Math.PI);
     fbx.updateMatrixWorld(true);
 
     // Auto-center & Scale overall balloon model
@@ -174,7 +174,7 @@ loader.load(
     const maxDim = Math.max(size.x, size.y, size.z);
     
     state.baseScale = 3.2 / maxDim;
-    fbx.position.set(-center.x * state.baseScale, -center.y * state.baseScale, -center.z * state.baseScale);
+    fbx.position.set(-center.x, -center.y, -center.z);
 
     state.balloonGroup.add(fbx);
     state.balloonGroup.scale.setScalar(state.baseScale);
