@@ -544,13 +544,16 @@ loader.load(
       }
     });
 
+    fbx.rotation.set(Math.PI / 2, 0, 0);
+    fbx.updateMatrixWorld(true);
+
     const box = new THREE.Box3().setFromObject(fbx);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z);
     
     state.baseScale = 2.6 / maxDim;
-    fbx.position.sub(center);
+    fbx.position.set(-center.x * state.baseScale, -center.y * state.baseScale, -center.z * state.baseScale);
 
     state.balloonGroup.add(fbx);
     state.balloonGroup.scale.setScalar(state.baseScale);
