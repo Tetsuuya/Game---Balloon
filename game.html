@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Balloon Air Escape - 3D Survival Game</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="./game.css" />
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="active">
+    <div class="loader-card">
+      <div class="spinner"></div>
+      <h2>Loading 3D Survival Game...</h2>
+      <p>Preparing 3D Balloon physics & obstacles</p>
+    </div>
+  </div>
+
+  <!-- In-Game HUD -->
+  <div id="game-hud" class="hud-layer hidden">
+    <!-- Top Stats Bar -->
+    <header class="top-hud">
+      <div class="hud-card score-card">
+        <span class="hud-label">Score</span>
+        <span id="score-text" class="hud-value">0</span>
+      </div>
+
+      <div class="hud-card time-card">
+        <span class="hud-label">Survival Time</span>
+        <span id="time-text" class="hud-value">00:00</span>
+      </div>
+
+      <div class="hud-card pumps-card">
+        <span class="hud-label">Pumps Collected</span>
+        <span id="pumps-text" class="hud-value">0 ⛽</span>
+      </div>
+    </header>
+
+    <!-- Center Air Gauge Bar -->
+    <div class="air-gauge-card">
+      <div class="air-gauge-header">
+        <span class="air-label">
+          <span class="pulse-icon">🎈</span> AIR PRESSURE
+        </span>
+        <span id="air-percent" class="air-value">100%</span>
+      </div>
+      <div class="air-track">
+        <div id="air-fill" class="air-fill-bar" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <!-- On-Screen Mobile/Touch Controls -->
+    <div class="touch-controls">
+      <button id="btn-left" class="touch-btn" title="Move Left">◀</button>
+      <button id="btn-pump" class="touch-btn pump-btn" title="Pump Air (Boost Up)">▲ PUMP AIR</button>
+      <button id="btn-right" class="touch-btn" title="Move Right">▶</button>
+    </div>
+  </div>
+
+  <!-- Main Menu Overlay -->
+  <div id="menu-screen" class="overlay-screen active">
+    <div class="menu-card glass-panel">
+      <div class="game-badge">3D AIR SURVIVAL</div>
+      <h1>Balloon Air Escape</h1>
+      <p class="subtitle">Keep your 3D balloon inflated before air leaks out completely!</p>
+
+      <div class="rules-grid">
+        <div class="rule-item">
+          <span class="rule-icon">⏳</span>
+          <div class="rule-desc">
+            <strong>Air Slowly Leaks</strong>
+            <span>Your balloon deflates over time and loses buoyancy.</span>
+          </div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-icon">⛽</span>
+          <div class="rule-desc">
+            <strong>Collect Air Pumps</strong>
+            <span>Grab glowing air canisters in the sky to inflate +25% air!</span>
+          </div>
+        </div>
+        <div class="rule-item">
+          <span class="rule-icon">⚠️</span>
+          <div class="rule-desc">
+            <strong>Avoid Spikes</strong>
+            <span>Spike hazards pop your balloon and drain air rapidly!</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls-hint-card">
+        <span>Controls: <strong>A / D</strong> or <strong>Left/Right Arrows</strong> to Move • <strong>W / Space</strong> to Pump Air</span>
+      </div>
+
+      <div class="menu-actions">
+        <button id="btn-start-game" class="btn btn-primary btn-large">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          START GAME
+        </button>
+        <a href="./index.html" class="btn btn-secondary">
+          ⚙️ Simulator Mode
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameover-screen" class="overlay-screen hidden">
+    <div class="menu-card glass-panel gameover-card">
+      <div class="danger-badge">GAME OVER</div>
+      <h2 id="gameover-title">Balloon Deflated!</h2>
+      <p id="gameover-reason" class="subtitle">Your air pressure ran out completely.</p>
+
+      <div class="stats-results-grid">
+        <div class="result-box">
+          <span class="res-label">Final Score</span>
+          <span id="res-score" class="res-val">0</span>
+        </div>
+        <div class="result-box">
+          <span class="res-label">Time Survived</span>
+          <span id="res-time" class="res-val">0s</span>
+        </div>
+        <div class="result-box">
+          <span class="res-label">Air Pumps Collected</span>
+          <span id="res-pumps" class="res-val">0</span>
+        </div>
+      </div>
+
+      <div class="menu-actions">
+        <button id="btn-restart" class="btn btn-primary btn-large">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+          PLAY AGAIN
+        </button>
+        <a href="./index.html" class="btn btn-secondary">
+          ⚙️ Simulator Mode
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./game.js"></script>
+</body>
+</html>

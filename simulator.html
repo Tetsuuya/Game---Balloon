@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Balloon Mechanics Testing Simulator</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <!-- 3D Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Loading Screen -->
+  <div id="loading-overlay" class="active">
+    <div class="loader-card">
+      <div class="spinner"></div>
+      <p>Loading 3D Balloon Model...</p>
+    </div>
+  </div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="icon">🎈</span>
+      <div class="brand-text">
+        <h1>Mechanics Simulator</h1>
+        <span class="subtext">3D Deflation Physics Testing</span>
+      </div>
+    </div>
+    
+    <a href="./index.html" class="game-link-btn">
+      🎮 Return to 3D Game
+    </a>
+  </header>
+
+  <!-- Air Pressure Control HUD (Bottom Overlay) -->
+  <main class="hud-panel">
+    <div class="pressure-gauge-container">
+      <div class="gauge-header">
+        <span class="label">Air Volume</span>
+        <span id="pressure-text" class="pressure-value">100%</span>
+      </div>
+      <div class="gauge-track">
+        <div id="pressure-bar" class="gauge-fill" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <div class="hud-controls">
+      <button id="btn-deflate" class="hud-btn btn-danger">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+        Release Air (Deflate)
+      </button>
+
+      <button id="btn-inflate" class="hud-btn btn-success">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        Pump Air (Inflate)
+      </button>
+
+      <button id="btn-auto-cycle" class="hud-btn btn-secondary">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        Auto Cycle
+      </button>
+    </div>
+
+    <div class="slider-control">
+      <label for="slider-pressure">Manual Pressure Slider:</label>
+      <input type="range" id="slider-pressure" min="0" max="100" value="100">
+    </div>
+  </main>
+
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
