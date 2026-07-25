@@ -381,9 +381,10 @@ for (let i = 0; i < 30; i++) {
 }
 
 function resetCloudPos(cloud, initial = false) {
+  const sideX = (Math.random() > 0.5 ? 1 : -1) * (10.0 + Math.random() * 20.0);
   cloud.position.set(
-    (Math.random() - 0.5) * 40,
-    3.0 + Math.random() * 10,
+    sideX,
+    8.0 + Math.random() * 12,
     initial ? (Math.random() - 0.5) * 70 : -50 - Math.random() * 25
   );
   const scale = 1.0 + Math.random() * 1.6;
@@ -783,7 +784,7 @@ function animate() {
     if (state.balloonGroup) {
       state.balloonGroup.position.x = state.posX;
       state.balloonGroup.position.y = state.posY;
-      state.balloonGroup.rotation.z = -state.velX * 1.5; // Steering tilt
+      state.balloonGroup.rotation.z = Math.max(-0.25, Math.min(0.25, -state.velX * 0.35)); // Gentle banking tilt
     }
 
     // Camera Follow
