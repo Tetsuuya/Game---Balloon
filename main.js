@@ -35,12 +35,12 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.2, 5.5);
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 container.appendChild(renderer.domElement);
 
 // Controls
@@ -64,8 +64,12 @@ scene.add(frontLight);
 const dirLight = new THREE.DirectionalLight(0xfff5ea, 1.8);
 dirLight.position.set(6, 12, 8);
 dirLight.castShadow = true;
-dirLight.shadow.mapSize.width = 2048;
-dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.left = -10;
+dirLight.shadow.camera.right = 10;
+dirLight.shadow.camera.top = 10;
+dirLight.shadow.camera.bottom = -10;
 scene.add(dirLight);
 
 const fillLightLeft = new THREE.DirectionalLight(0xe0f2fe, 1.2);
@@ -222,6 +226,8 @@ btnAutoCycle.addEventListener('click', () => {
    14-Frame Accurate Hot Air Balloon Deflation Engine (Matching Reference)
    ========================================================================== */
 const clock = new THREE.Clock();
+let lastDisplayPercent = -1;
+let lastDeformPressure = -1;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -245,10 +251,13 @@ function animate() {
   const p = Math.max(0, Math.min(1, state.currentPressure / 100)); // 1.0 (Full) -> 0.0 (Deflated)
   const d = 1.0 - p; // Deflation Progress: 0.0 (Full) -> 1.0 (Deflated)
 
-  // Update UI Gauge
+  // Update UI Gauge (Cached)
   const displayPercent = Math.round(state.currentPressure);
-  pressureText.textContent = `${displayPercent}%`;
-  pressureBar.style.width = `${displayPercent}%`;
+  if (displayPercent !== lastDisplayPercent) {
+    pressureText.textContent = `${displayPercent}%`;
+    pressureBar.style.width = `${displayPercent}%`;
+    lastDisplayPercent = displayPercent;
+  }
 
   // --------------------------------------------------------------------------
   // 1. Buoyancy & Rigid Basket Landing Physics
@@ -280,7 +289,8 @@ function animate() {
   // --------------------------------------------------------------------------
   // 2. 14-Keyframe Accurate Fabric Deflation (Matching Reference Image)
   // --------------------------------------------------------------------------
-  if (state.envelopeMesh && state.envelopeMesh.userData.originalPositions) {
+  if (state.envelopeMesh && state.envelopeMesh.userData.originalPositions && Math.abs(state.currentPressure - lastDeformPressure) > 0.001) {
+    lastDeformPressure = state.currentPressure;
     const geo = state.envelopeMesh.geometry;
     const posAttr = geo.attributes.position;
     const orig = state.envelopeMesh.userData.originalPositions;
@@ -343,7 +353,6 @@ function animate() {
     }
 
     posAttr.needsUpdate = true;
-    geo.computeVertexNormals(); // Recompute lighting normals for smooth organic folds!
   }
 
   // Particle exhaust update

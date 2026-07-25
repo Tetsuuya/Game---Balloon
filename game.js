@@ -63,13 +63,13 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.set(0, 1.8, 7.5);
 
 // Renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 container.appendChild(renderer.domElement);
 
 // Fog for Atmospheric Depth
@@ -103,8 +103,14 @@ scene.add(hemiLight);
 const sunLight = new THREE.DirectionalLight(0xffedd5, 2.2);
 sunLight.position.set(15, 30, 20);
 sunLight.castShadow = true;
-sunLight.shadow.mapSize.width = 2048;
-sunLight.shadow.mapSize.height = 2048;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.left = -20;
+sunLight.shadow.camera.right = 20;
+sunLight.shadow.camera.top = 20;
+sunLight.shadow.camera.bottom = -20;
+sunLight.shadow.camera.near = 0.5;
+sunLight.shadow.camera.far = 80;
 scene.add(sunLight);
 
 const fillLight = new THREE.DirectionalLight(0xf472b6, 1.0);
@@ -115,11 +121,40 @@ scene.add(fillLight);
 scene.add(state.balloonGroup);
 
 /* ==========================================================================
-   Visual Effects System
+   Visual Effects System (Pooled Particles for Zero-GC Operations)
    ========================================================================== */
+const flameGeo = new THREE.SphereGeometry(0.09, 6, 6);
+const flameMat1 = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+const flameMat2 = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+const burstGeo = new THREE.DodecahedronGeometry(0.12, 0);
+
+const particlePool = [];
+
+function getPooledParticle(geo, mat) {
+  let p = particlePool.pop();
+  if (!p) {
+    p = new THREE.Mesh(geo, mat);
+    p.userData = {
+      vel: new THREE.Vector3(),
+      rotVel: new THREE.Vector3(),
+      life: 0,
+      maxLife: 1
+    };
+  } else {
+    p.geometry = geo;
+    p.material = mat;
+  }
+  p.visible = true;
+  return p;
+}
+
+function recycleParticle(p) {
+  p.visible = false;
+  scene.remove(p);
+  particlePool.push(p);
+}
 
 function spawnParticleBurst(position, colorHex, count = 25) {
-  const pGeo = new THREE.DodecahedronGeometry(0.12, 0);
   const pMat = new THREE.MeshBasicMaterial({
     color: colorHex,
     transparent: true,
@@ -128,23 +163,25 @@ function spawnParticleBurst(position, colorHex, count = 25) {
   });
 
   for (let i = 0; i < count; i++) {
-    const pMesh = new THREE.Mesh(pGeo, pMat.clone());
+    const pMesh = getPooledParticle(burstGeo, pMat);
     pMesh.position.copy(position);
 
     const speed = 2.5 + Math.random() * 4.0;
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.random() * Math.PI;
 
-    const vx = Math.sin(phi) * Math.cos(theta) * speed;
-    const vy = Math.cos(phi) * speed;
-    const vz = Math.sin(phi) * Math.sin(theta) * speed;
-
-    pMesh.userData = {
-      vel: new THREE.Vector3(vx, vy, vz),
-      rotVel: new THREE.Vector3((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8),
-      life: 0.8 + Math.random() * 0.4,
-      maxLife: 1.2
-    };
+    pMesh.userData.vel.set(
+      Math.sin(phi) * Math.cos(theta) * speed,
+      Math.cos(phi) * speed,
+      Math.sin(phi) * Math.sin(theta) * speed
+    );
+    pMesh.userData.rotVel.set(
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 8,
+      (Math.random() - 0.5) * 8
+    );
+    pMesh.userData.life = 0.8 + Math.random() * 0.4;
+    pMesh.userData.maxLife = 1.2;
 
     scene.add(pMesh);
     state.particles.push(pMesh);
@@ -152,28 +189,23 @@ function spawnParticleBurst(position, colorHex, count = 25) {
 }
 
 function spawnBurnerFlame() {
-  const pGeo = new THREE.SphereGeometry(0.09, 6, 6);
-  const pMat = new THREE.MeshBasicMaterial({
-    color: Math.random() > 0.4 ? 0xf59e0b : 0xef4444,
-    transparent: true,
-    opacity: 0.9,
-    blending: THREE.AdditiveBlending
-  });
-
   for (let i = 0; i < 4; i++) {
-    const flame = new THREE.Mesh(pGeo, pMat);
+    const mat = Math.random() > 0.4 ? flameMat1 : flameMat2;
+    const flame = getPooledParticle(flameGeo, mat);
     flame.position.set(
       state.posX + (Math.random() - 0.5) * 0.15,
       state.posY - 0.3,
       (Math.random() - 0.5) * 0.15
     );
 
-    flame.userData = {
-      vel: new THREE.Vector3((Math.random() - 0.5) * 0.8, -1.8 - Math.random() * 1.5, (Math.random() - 0.5) * 0.8),
-      rotVel: new THREE.Vector3(0, 0, 0),
-      life: 0.3 + Math.random() * 0.2,
-      maxLife: 0.5
-    };
+    flame.userData.vel.set(
+      (Math.random() - 0.5) * 0.8,
+      -1.8 - Math.random() * 1.5,
+      (Math.random() - 0.5) * 0.8
+    );
+    flame.userData.rotVel.set(0, 0, 0);
+    flame.userData.life = 0.3 + Math.random() * 0.2;
+    flame.userData.maxLife = 0.5;
 
     scene.add(flame);
     state.particles.push(flame);
@@ -216,7 +248,7 @@ function triggerAirGaugePulse(type) {
    ========================================================================== */
 
 function createTerrainSegment(offsetZ) {
-  const geo = new THREE.PlaneGeometry(160, 120, 50, 50);
+  const geo = new THREE.PlaneGeometry(160, 120, 24, 24);
   geo.rotateX(-Math.PI / 2);
   
   const pos = geo.attributes.position;
@@ -387,25 +419,22 @@ scene.add(state.windParticles);
 function createAirPumpMesh() {
   const pumpGroup = new THREE.Group();
   
-  const bodyGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.7, 16);
+  const bodyGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.7, 12);
   const bodyMat = new THREE.MeshStandardMaterial({
     color: 0x10b981,
     metalness: 0.7,
     roughness: 0.2,
     emissive: 0x059669,
-    emissiveIntensity: 0.5
+    emissiveIntensity: 0.8
   });
   const body = new THREE.Mesh(bodyGeo, bodyMat);
   pumpGroup.add(body);
 
-  const capGeo = new THREE.CylinderGeometry(0.15, 0.27, 0.18, 16);
+  const capGeo = new THREE.CylinderGeometry(0.15, 0.27, 0.18, 12);
   const capMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9 });
   const cap = new THREE.Mesh(capGeo, capMat);
   cap.position.y = 0.4;
   pumpGroup.add(cap);
-
-  const aura = new THREE.PointLight(0x34d399, 2.0, 4);
-  pumpGroup.add(aura);
 
   pumpGroup.castShadow = true;
   return pumpGroup;
@@ -414,18 +443,18 @@ function createAirPumpMesh() {
 function createSpikeMesh() {
   const spikeGroup = new THREE.Group();
   
-  const coreGeo = new THREE.SphereGeometry(0.35, 12, 12);
+  const coreGeo = new THREE.SphereGeometry(0.35, 10, 10);
   const coreMat = new THREE.MeshStandardMaterial({
     color: 0xef4444,
     metalness: 0.8,
     roughness: 0.2,
     emissive: 0xdc2626,
-    emissiveIntensity: 0.6
+    emissiveIntensity: 0.9
   });
   const core = new THREE.Mesh(coreGeo, coreMat);
   spikeGroup.add(core);
 
-  const coneGeo = new THREE.ConeGeometry(0.09, 0.45, 8);
+  const coneGeo = new THREE.ConeGeometry(0.09, 0.45, 6);
   const coneMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.9, roughness: 0.1 });
 
   const directions = [
@@ -439,9 +468,6 @@ function createSpikeMesh() {
     spike.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(x, y, z).normalize());
     spikeGroup.add(spike);
   });
-
-  const aura = new THREE.PointLight(0xef4444, 2.5, 4);
-  spikeGroup.add(aura);
 
   return spikeGroup;
 }
@@ -632,6 +658,11 @@ function gameOver(reason) {
    Main Game Loop & Hot Air Balloon Buoyancy Physics
    ========================================================================== */
 const clock = new THREE.Clock();
+let lastScore = -1;
+let lastTimeStr = '';
+let lastPumps = -1;
+let lastDisplayP = -1;
+let lastDeformPressure = -1;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -640,13 +671,13 @@ function animate() {
 
   const flySpeed = (8.0 + state.survivalTime * 0.2) * delta;
 
-  // 1. Update Active 3D Particles
+  // 1. Update Active 3D Particles (Recycle to pool)
   for (let i = state.particles.length - 1; i >= 0; i--) {
     const p = state.particles[i];
     p.userData.life -= delta;
 
     if (p.userData.life <= 0) {
-      scene.remove(p);
+      recycleParticle(p);
       state.particles.splice(i, 1);
     } else {
       p.position.addScaledVector(p.userData.vel, delta);
@@ -705,16 +736,35 @@ function animate() {
       spawnBurnerFlame();
     }
 
-    // Update HUD
-    scoreText.textContent = Math.round(state.score);
+    // Cached HUD Updates (Avoid layout thrashing)
+    const roundedScore = Math.round(state.score);
+    if (roundedScore !== lastScore) {
+      scoreText.textContent = roundedScore;
+      lastScore = roundedScore;
+    }
+
     const mins = Math.floor(state.survivalTime / 60).toString().padStart(2, '0');
     const secs = Math.floor(state.survivalTime % 60).toString().padStart(2, '0');
-    timeText.textContent = `${mins}:${secs}`;
-    pumpsText.textContent = `${state.pumpsCollected} ⛽`;
-    
+    const timeStr = `${mins}:${secs}`;
+    if (timeStr !== lastTimeStr) {
+      timeText.textContent = timeStr;
+      lastTimeStr = timeStr;
+    }
+
+    if (state.pumpsCollected !== lastPumps) {
+      const pumpsCountElem = document.getElementById('pumps-count-text') || pumpsText;
+      if (pumpsCountElem) pumpsCountElem.textContent = `${state.pumpsCollected} ⛽`;
+      const btnPumpCountElem = document.getElementById('btn-pump-count');
+      if (btnPumpCountElem) btnPumpCountElem.textContent = state.pumpsCollected;
+      lastPumps = state.pumpsCollected;
+    }
+
     const displayP = Math.round(state.airPressure);
-    airPercent.textContent = `${displayP}%`;
-    airFill.style.width = `${displayP}%`;
+    if (displayP !== lastDisplayP) {
+      airPercent.textContent = `${displayP}%`;
+      airFill.style.width = `${displayP}%`;
+      lastDisplayP = displayP;
+    }
 
     // 4. Hot Air Balloon Movement & Thermal Buoyancy Physics
     if (state.keyLeft) state.velX -= 0.45 * delta;  // A / Left Arrow
@@ -741,14 +791,14 @@ function animate() {
     camera.position.y += (state.posY * 0.3 + 1.8 - camera.position.y) * 0.05;
     camera.lookAt(state.posX * 0.2, state.posY * 0.2 + 0.5, 0);
 
-    // 5. Move Collectibles & Hazards
+    // 5. Move Collectibles & Hazards (Optimized Squared Distance)
     state.airPumps.forEach(pump => {
       pump.position.z += flySpeed;
       pump.rotation.y += 0.04;
       pump.position.y += Math.sin(time * 3 + pump.position.x) * 0.005;
 
-      const dist = pump.position.distanceTo(state.balloonGroup.position);
-      if (dist < 1.2) {
+      const distSq = pump.position.distanceToSquared(state.balloonGroup.position);
+      if (distSq < 1.44) { // 1.2 * 1.2
         state.airPressure = Math.min(100, state.airPressure + 25);
         state.score += 150;
         state.pumpsCollected++;
@@ -768,8 +818,8 @@ function animate() {
       spike.rotation.x += 0.03;
       spike.rotation.y += 0.04;
 
-      const dist = spike.position.distanceTo(state.balloonGroup.position);
-      if (dist < 1.1) {
+      const distSq = spike.position.distanceToSquared(state.balloonGroup.position);
+      if (distSq < 1.21) { // 1.1 * 1.1
         state.airPressure -= 30;
 
         spawnParticleBurst(spike.position, 0xef4444, 35);
@@ -797,11 +847,12 @@ function animate() {
     }
   }
 
-  // 6. Deform 3D Balloon Mesh based on current air pressure
+  // 6. Deform 3D Balloon Mesh based on current air pressure (Only when pressure changes)
   const p = Math.max(0, Math.min(1, state.airPressure / 100));
   const d = 1.0 - p;
 
-  if (state.envelopeMesh && state.envelopeMesh.userData.originalPositions) {
+  if (state.envelopeMesh && state.envelopeMesh.userData.originalPositions && Math.abs(state.airPressure - lastDeformPressure) > 0.001) {
+    lastDeformPressure = state.airPressure;
     const geo = state.envelopeMesh.geometry;
     const posAttr = geo.attributes.position;
     const orig = state.envelopeMesh.userData.originalPositions;
@@ -834,7 +885,6 @@ function animate() {
     }
 
     posAttr.needsUpdate = true;
-    geo.computeVertexNormals();
   }
 
   renderer.render(scene, camera);
